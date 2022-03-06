@@ -23,7 +23,7 @@ int main (int argc , char* argv [])
     auto f = [](double x , double t) -> double { return x + t; };
 
     auto check = solveLinear (scale , phi , psi , f);
-    std::cout << "Final Matrix";
+    std::cout << "Final Matrix\n";
     std::for_each (check.begin () , check.end () , [](auto& arr) {
         std::copy (arr.begin () , arr.end () , std::ostream_iterator<double> (std::cout , "\t| "));
         std::cout << "\n";

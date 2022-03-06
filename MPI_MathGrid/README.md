@@ -11,7 +11,7 @@ To more detail about project look at [task documentation](task.pdf)
 
 ```cmake ../```
 
-```make```
+```cmake --build .```
 
 ```run```
 
