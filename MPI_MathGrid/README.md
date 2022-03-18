@@ -2,41 +2,35 @@
 ### 3rd grade MPI ###
 
 ##### Target #####
-To more detail about project look at [task documentation](task.pdf)
+To more detail about project look at [**task documentation**](task.pdf)
 ##### Build #####
 
-```mkdir build ```
+> - *mkdir build*
+> - *cd build*
+> - *cmake ../*
+> - *cmake --build .*
+> - *mpirun -np <threads> ./run*
 
-```cd build```
-
-```cmake ../```
-
-```cmake --build .```
-
-```mpirun -np <threads> ./run```
-
-It launch default settings, use --help to find more about application.
+It launch default settings, use **--help** to find more about application.
 
 ##### Example #####
 
-* Use '''--oversubscribe''' option to use as many threads as you want
-* To redefine boundary conditions or function in equation just correct ```phi``` or ```psi``` or ```f``` in main function.
+* Use *--oversubscribe* option to use as many threads as you want
+* To redefine boundary conditions or function in equation just correct **phi** or **psi** or **f** in main function.
 * Concrete example: ```mpirun -np 4 ./run --size=15 --x=0.5 --tau=0.5```
 
 ##### Task to access #####
 
-```cd build```
+> - *cd build*
+> - *mpic++ ../accessToLab.cpp -o ./access*
+> - *mpirun -np <threads> access*
 
-```mpic++ ../accessToLab.cpp -o ./access```
-
-```mpirun -np <threads> access```
-
-According to data that is got on my computer, it's about 2 micro-seconds
+According to data that is got on my computer, it's about **2 micro-seconds**
 and not depend on count of used threads.
 
 ##### MPI speed analysis #####
 
-To check not for answer, just for time use ```--time``` option
+To check not for answer, just for time use **--time** option
 
 | Threads | Size | Acceleration |
 | --- | --- | --- |
@@ -49,7 +43,6 @@ To check not for answer, just for time use ```--time``` option
 | 2 | 800 | 1.6 |
 | 2 | 1600 | 1.76 |
 | Threads | Size | Acceleration |
-| --- | --- | --- |
 | 3 | 15 | 0.16 |
 | 3 | 30 | 0.44 |
 | 3 | 60 | 0.69 |
@@ -61,7 +54,6 @@ To check not for answer, just for time use ```--time``` option
 | 3 | 2400 | 2.43 |
 | 3 | 4000 | 2.58 |
 | Threads | Size | Acceleration |
-| --- | --- | --- |
 | 4 | 15 | 0.075 |
 | 4 | 30 | 0.37 |
 | 4 | 60 | 0.67 |
