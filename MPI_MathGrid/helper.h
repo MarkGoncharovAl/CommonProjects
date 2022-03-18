@@ -38,7 +38,7 @@ namespace implement
 
     inline void quit (size_t line , const char file [])
     {
-        implement::act(MPI_Finalize () , line , file);
+        implement::act (MPI_Finalize () , line , file);
         std::exit (0);
     }
 }
@@ -47,3 +47,16 @@ namespace implement
 #define act(stat) implement::act(stat, __LINE__, __FILE__)
 #define check(stat, message) implement::check(stat, message, __LINE__, __FILE__)
 #define quit() implement::quit(__LINE__, __FILE__)
+
+namespace mpi
+{
+    constexpr int rank_main = 0;
+    std::pair</*size*/int , /*rank*/int> init ()
+    {
+        int size = 0, rank = 0;
+        act (MPI_Init (NULL , NULL));
+        act (MPI_Comm_size (MPI_COMM_WORLD , &size));
+        act (MPI_Comm_rank (MPI_COMM_WORLD , &rank));
+        return std::make_pair(size, rank);
+    }
+}

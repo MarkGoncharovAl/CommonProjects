@@ -12,33 +12,40 @@ struct scale_t
     double h = 1.0;
 };
 
-inline scale_t processStart(int argc, char * argv[]) 
-{
-    scale_t result;
-    po::options_description desc ("Allowed options");
-    desc.add_options ()
-            ("help,h" , "Information about options")
-            ("size,s" , po::value<size_t> () , "Size of result matrix")
-            ("tau,t", po::value<double>(), "Time step")
-            ("x,x", po::value<double>(), "Coordinate step");
-    
-    po::variables_map vm;
-    po::store (po::parse_command_line (argc , argv , desc) , vm);
-    po::notify (vm);
+scale_t processStart (int argc , char* argv []);
 
-    if (vm.count ("help")) {
-        std::cout << desc;
-        std::exit(0);
-    }
-    if (vm.count ("size"))
-        result.size = vm["size"].as<size_t> ();
-    if (vm.count ("tau"))
-        result.tau = vm["tau"].as<double> ();
-    if (vm.count ("tau"))
-        result.h = vm["x"].as<double> ();
+void dumpShort (const std::vector<std::vector<double>>& data , int size_x , int size_t);
+void dump (const std::vector<std::vector<double>>& data , int size_x , int size_t);
 
-    std::cout << "Size = " << result.size << 
-                 "\nTau = " << result.tau << 
-                 "\nX = " << result.h << "\n";
-    return result;
-}
+void fillDataShort (std::function<double (double, double)> f ,
+                    std::vector<std::vector<double>>& data ,
+                    scale_t scale , int sizeX , int curT , int offset = 0);
+void fillData (std::function<double (double, double)> f ,
+               std::vector<std::vector<double>>& data ,
+               scale_t scale , int sizeX , int offset = 0);
+
+std::vector<std::vector<double>>
+solveLinear (scale_t scale ,
+             std::function<double (double)> phi ,
+             std::function<double (double)> psi ,
+             std::function<double (double , double)> f);
+
+std::vector<std::vector<double>>
+solveParallel (scale_t scale ,
+             std::function<double (double)> phi ,
+             std::function<double (double)> psi ,
+             std::function<double (double , double)> f ,
+             int size , int rank);
+
+void mainThreadWork (scale_t scale ,
+                    std::vector<std::vector<double>> data ,
+                    std::function<double (double , double)> f ,
+                    int common_size , int size);
+void commonThreadWork (scale_t scale ,
+                    std::vector<std::vector<double>> data ,
+                    std::function<double (double , double)> f ,
+                    int offset , int rank);
+void lastThreadWork (scale_t scale ,
+                    std::vector<std::vector<double>> data ,
+                    std::function<double (double , double)> f ,
+                    int offset , int rank);
