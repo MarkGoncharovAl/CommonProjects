@@ -9,7 +9,7 @@ To more detail about project look at [**task documentation**](task.pdf)
 > - *cd build*
 > - *cmake ../*
 > - *cmake --build .*
-> - *mpirun -np* <threads> *./run*
+> - *mpirun -np* **threads** *./run*
 
 It launch default settings, use **--help** to find more about application.
 
@@ -23,7 +23,7 @@ It launch default settings, use **--help** to find more about application.
 
 > - *cd build*
 > - *mpic++ ../accessToLab.cpp -o ./access*
-> - *mpirun -np* <threads> *access*
+> - *mpirun -np* **threads** *access*
 
 According to data that is got on my computer, it's about **2 micro-seconds**
 and not depend on count of used threads.
