@@ -1,34 +1,34 @@
 # Math solver #
-### 3rd grade MPI ###
+##### 3rd grade MPI #####
 
-##### Target #####
+## Target ##
 To more detail about project look at [**task documentation**](task.pdf)
-##### Build #####
+## Build ##
 
 > - *mkdir build*
 > - *cd build*
 > - *cmake ../*
 > - *cmake --build .*
-> - *mpirun -np <threads> ./run*
+> - *mpirun -np* <threads> *./run*
 
 It launch default settings, use **--help** to find more about application.
 
-##### Example #####
+## Example ##
 
 * Use *--oversubscribe* option to use as many threads as you want
 * To redefine boundary conditions or function in equation just correct **phi** or **psi** or **f** in main function.
 * Concrete example: ```mpirun -np 4 ./run --size=15 --x=0.5 --tau=0.5```
 
-##### Task to access #####
+## Task to access ##
 
 > - *cd build*
 > - *mpic++ ../accessToLab.cpp -o ./access*
-> - *mpirun -np <threads> access*
+> - *mpirun -np* <threads> *access*
 
 According to data that is got on my computer, it's about **2 micro-seconds**
 and not depend on count of used threads.
 
-##### MPI speed analysis #####
+## MPI speed analysis ##
 
 To check not for answer, just for time use **--time** option
 
