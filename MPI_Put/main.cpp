@@ -1,17 +1,6 @@
 #include "helper.h"
- 
-/**
- * @brief Illustrate how to put data into a target window.
- * @details This application consists of two MPI processes. MPI process 1
- * exposes a window containing an integer. MPI process 0 puts the value 12345
- * in it via MPI_Put. After the MPI_Put is issued, synchronisation takes place
- * via MPI_Win_fence and the MPI process 1 prints the value in its window.
- **/
 
-int change_num (int num)
-{
-    return num + 1;
-}
+auto change_num = [](int num) { return num + 1; };
 
 int main(int argc, char* argv[])
 {
