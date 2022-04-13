@@ -1,0 +1,3 @@
+/home/mark/Programming/ParProga/CommonProjects/Sort/build/CMakeFiles/rebuild_cache.dir
+/home/mark/Programming/ParProga/CommonProjects/Sort/build/CMakeFiles/edit_cache.dir
+/home/mark/Programming/ParProga/CommonProjects/Sort/build/CMakeFiles/run.dir
