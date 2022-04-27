@@ -2,17 +2,19 @@
 #include <atomic>
 #include <boost/program_options.hpp>
 #include <functional>
+#include <future>
 #include <iostream>
 #include <mutex>
 #include <thread>
 
-namespace po = boost::program_options;
-std::tuple<int, long double, std::pair<long double, long double>> processStart(int argc,
-                                                                char *argv[]);
-void integral(long double left, long double right, long double error);
+// Compile:
+//    clang++-12 main.cpp -lboost_program_options -lpthread -std=c++2a
 
-constexpr double microStep = 0.2;
-std::atomic<double> RESULT;
+namespace po = boost::program_options;
+std::tuple<int, long double, std::pair<long double, long double>>
+processStart(int argc, char *argv[]);
+long double integral(long double left, long double right, long double error);
+
 std::mutex m;
 
 auto f = [](long double x) -> long double { return x * x; };
@@ -23,26 +25,57 @@ int main(int argc, char *argv[]) {
     std::cerr << "Right boundary must be righter!\n";
     std::exit(0);
   }
-
+  threadSize *= 8;
   long double step = (bounds.second - bounds.first) / threadSize;
   long double left = bounds.first;
-  long double errorPT = 12.0 * error / threadSize;
+  long double errorPT = error / threadSize;
 
-  std::vector<std::thread> threads(threadSize);
-  for (auto &thread : threads) {
-    thread = std::thread(integral, left, left + step, errorPT);
+  std::vector<std::future<long double>> data(threadSize);
+  auto startTime = std::chrono::steady_clock::now();
+  for (auto &elem : data) {
+    elem = std::async(std::launch::async, integral, left, left + step, errorPT);
     left += step;
   }
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  std::cout << "RESULT:\t" << RESULT << "\n";
+
+  long double result = 0;
+  for (auto &elem : data)
+    result += elem.get();
+  auto endTime = std::chrono::steady_clock::now();
+
+  std::cout << "Parallel result:  " << result << "\tTIME:\t" << 
+  std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() << "\n";
+
+  startTime = std::chrono::steady_clock::now();
+  result = integral(bounds.first, bounds.second, error);
+  endTime = std::chrono::steady_clock::now();
+  std::cout << "Linear result:    " << result << "\tTIME:\t" << 
+    std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() << "\n";
 }
 
 long double calcSecDerivative(long double point) {
   constexpr long double small_step = 0.001;
-  return f(point - small_step) - 2 * f(point) +
-         f(point + small_step) / (small_step * small_step);
+  return (f(point + small_step) - f(point - small_step)) / small_step;
+}
+
+std::pair<long double, int> calcStep(long double left, long double microStep, long double error) {
+    long double secDerivative = calcSecDerivative(left + microStep / 2);
+    long double curStep = error / std::abs(secDerivative);
+    int steps = static_cast<int>(std::ceil(microStep / curStep));
+    curStep = microStep / steps;
+    return std::make_pair(curStep, steps);
+}
+
+long double integralPart(long double left, long double microStep, long double error) {
+    auto [curStep, steps] = calcStep(left, microStep, error);
+    long double curResult = 0;
+
+    for (int i = 1; i < steps - 1; ++i) {
+      curResult += f(left + i * curStep);
+    }
+    curResult *= 2;
+    curResult += f(left) + f(left + microStep - curStep);
+    curResult *= curStep / 2.0;
+    return curResult;
 }
 
 /* -----------------------------------------------------------------
@@ -54,52 +87,27 @@ long double calcSecDerivative(long double point) {
  * thus
  * h = np.sqrt(curError / max(f``) / (xN - x0)) .
  * -------------------------------------------------------------- */
-void integral(long double left, long double right, long double error) {
+long double integral(long double left, long double right, long double error) {
+  constexpr double microStep = 0.2;
   long double result = 0;
-  long double curError = error / (right - left);
+  error = error * microStep / (right - left);
+
   while (left + microStep < right) {
-    long double secDerivative = calcSecDerivative(left + microStep / 2);
-    long double curStep = std::sqrt(curError / (secDerivative * microStep));
-    int steps = static_cast<int>(std::ceil(microStep / curStep));
-    curStep = microStep / steps;
-    long double curResult = 0;
-    for (int i = 1; i < steps - 1; ++i) {
-        result += f(left + i * curStep);
-    }
-    curResult *= 2;
-    curResult += f(left) + f(left + microStep - curStep);
-    curResult *= curStep / 2.0;
-    result += curResult;
+    result += integralPart(left, microStep, error);
     left += microStep;
   }
-
-    long double curMicroStep = right - left;
-  long double secDerivative = calcSecDerivative((left + right) / 2);
-    long double curStep = std::sqrt(curError / (secDerivative * curMicroStep));
-    int steps = static_cast<int>(std::ceil(curMicroStep / curStep));
-    curStep = curMicroStep / steps;
-    long double curResult = 0;
-    for (int i = 1; i < steps - 1; ++i) {
-        result += f(left + i * curStep);
-    }
-    curResult *= 2;
-    curResult += f(left) + f(right - curStep);
-    curResult *= curStep / 2.0;
-    result += curResult;
-
-  // ----- mutex part ------
-  RESULT += result;
-  // -----------------------
+  return result + integralPart(left, right - left, error);
 }
 
-std::tuple<int, long double, std::pair<long double, long double>> processStart(int argc,
-                                                                char *argv[]) {
+std::tuple<int, long double, std::pair<long double, long double>>
+processStart(int argc, char *argv[]) {
   std::vector<long double> boundaries;
   po::options_description desc("Allowed options");
   desc.add_options()("help,h", "Information about options")(
-      "thread,t", po::value<int>(),
-      "Num of threads")("error,e", po::value<long double>(), "Error of calculation")(
-      "boundaries,b", po::value<std::vector<long double>>(&boundaries)->multitoken(),
+      "thread,t", po::value<int>(), "Num of threads")(
+      "error,e", po::value<long double>(), "Error of calculation")(
+      "boundaries,b",
+      po::value<std::vector<long double>>(&boundaries)->multitoken(),
       "Boundaries where integral will be calculated");
 
   po::variables_map vm;
