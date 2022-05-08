@@ -15,9 +15,7 @@ std::tuple<int, long double, std::pair<long double, long double>>
 processStart(int argc, char *argv[]);
 long double integral(long double left, long double right, long double error);
 
-std::mutex m;
-
-auto f = [](long double x) -> long double { return x * x; };
+auto f = [](long double x) -> long double { return sin(1 / (x * x)); };
 
 int main(int argc, char *argv[]) {
   auto [threadSize, error, bounds] = processStart(argc, argv);
@@ -28,7 +26,7 @@ int main(int argc, char *argv[]) {
   threadSize *= 8;
   long double step = (bounds.second - bounds.first) / threadSize;
   long double left = bounds.first;
-  long double errorPT = error / threadSize;
+  long double errorPT = error / (threadSize * 4.0);
 
   std::vector<std::future<long double>> data(threadSize);
   auto startTime = std::chrono::steady_clock::now();
@@ -42,40 +40,65 @@ int main(int argc, char *argv[]) {
     result += elem.get();
   auto endTime = std::chrono::steady_clock::now();
 
-  std::cout << "Parallel result:  " << result << "\tTIME:\t" << 
-  std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() << "\n";
+  std::cout << "Parallel result:  " << result << "\tTIME:\t"
+            << std::chrono::duration_cast<std::chrono::microseconds>(endTime -
+                                                                     startTime)
+                   .count()
+            << "\n";
 
   startTime = std::chrono::steady_clock::now();
   result = integral(bounds.first, bounds.second, error);
   endTime = std::chrono::steady_clock::now();
-  std::cout << "Linear result:    " << result << "\tTIME:\t" << 
-    std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() << "\n";
+  std::cout << "Linear result:    " << result << "\tTIME:\t"
+            << std::chrono::duration_cast<std::chrono::microseconds>(endTime -
+                                                                     startTime)
+                   .count()
+            << "\n";
 }
 
-long double calcSecDerivative(long double point) {
-  constexpr long double small_step = 0.001;
+long double calcDerivative(long double point) {
+  constexpr long double small_step = 0.0005;
   return (f(point + small_step) - f(point - small_step)) / small_step;
 }
 
-std::pair<long double, int> calcStep(long double left, long double microStep, long double error) {
-    long double secDerivative = calcSecDerivative(left + microStep / 2);
-    long double curStep = error / std::abs(secDerivative);
-    int steps = static_cast<int>(std::ceil(microStep / curStep));
-    curStep = microStep / steps;
-    return std::make_pair(curStep, steps);
+std::tuple<long double, long double, int>
+calcStep(long double left, long double microStep, long double error) {
+  long double relation = 1.0;
+  long double firstDerivative = calcDerivative(left);
+  microStep *= 10.0;
+  error *= 10.0;
+  do {
+    microStep *= 0.1;
+    error *= 0.1;
+    long double secDerivative = calcDerivative(left + microStep / 2);
+    relation = std::abs(secDerivative / firstDerivative);
+  } while (relation > 10.0 || relation < 0.1);
+
+  long double curStep = error / std::abs(firstDerivative);
+  int steps = static_cast<int>(std::ceil(microStep / curStep));
+  curStep = microStep / steps;
+  return std::tuple(microStep, curStep, steps);
 }
 
-long double integralPart(long double left, long double microStep, long double error) {
-    auto [curStep, steps] = calcStep(left, microStep, error);
-    long double curResult = 0;
+long double integralPart(long double left, long double microStep,
+                         long double error) {
+  auto [newMicroStep, curStep, steps] = calcStep(left, microStep, error);
+  long double curResult = 0;
 
-    for (int i = 1; i < steps - 1; ++i) {
-      curResult += f(left + i * curStep);
-    }
-    curResult *= 2;
-    curResult += f(left) + f(left + microStep - curStep);
-    curResult *= curStep / 2.0;
-    return curResult;
+  for (int i = 1; i < steps - 1; ++i) {
+    curResult += f(left + i * curStep);
+  }
+  curResult *= 2;
+  curResult += f(left) + f(left + newMicroStep - curStep);
+  curResult *= curStep / 2.0;
+
+  if (newMicroStep < microStep) {
+    int times = int(microStep / newMicroStep);
+    for (int i = 1; i < times; ++i)
+      curResult +=
+          integralPart(left + i * newMicroStep, newMicroStep, error / times);
+  }
+  return curResult;
 }
 
 /* -----------------------------------------------------------------
@@ -88,7 +111,7 @@ long double integralPart(long double left, long double microStep, long double er
  * h = np.sqrt(curError / max(f``) / (xN - x0)) .
  * -------------------------------------------------------------- */
 long double integral(long double left, long double right, long double error) {
-  constexpr double microStep = 0.2;
+  constexpr double microStep = 0.1;
   long double result = 0;
   error = error * microStep / (right - left);
 
